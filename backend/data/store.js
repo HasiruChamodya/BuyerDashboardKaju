@@ -221,7 +221,7 @@ const notifications = [
 const conversations = [
   {
     id: "c1", userId: 1, vendorName: "Anuradhapura Cashew Estate", vendorVerified: true,
-    relatedLot: "L-1001",
+    relatedLot: "L-1001", unread: 1,
     messages: [
       { id: "m1", from: "buyer", text: "Hi, is the W180 lot still available in 1MT packs?", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString() },
       { id: "m2", from: "vendor", text: "Yes, we currently have 8MT available in 1MT packs.", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 7).toISOString() },
@@ -230,7 +230,7 @@ const conversations = [
   },
   {
     id: "c2", userId: 1, vendorName: "Puttalam Coastal Processors", vendorVerified: true,
-    relatedLot: "L-1002",
+    relatedLot: "L-1002", unread: 0,
     messages: [
       { id: "m4", from: "buyer", text: "If I win the W240 auction, when can this ship to Colombo?", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 31).toISOString() },
       { id: "m5", from: "vendor", text: "Sure, the dispatch will go out by Thursday.", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 30).toISOString() },
@@ -238,7 +238,7 @@ const conversations = [
   },
   {
     id: "c3", userId: 1, vendorName: "Vavuniya AgroExports", vendorVerified: true,
-    relatedLot: "L-1004",
+    relatedLot: "L-1004", unread: 0,
     messages: [
       { id: "m6", from: "vendor", text: "Thank you for the order — escrow confirmed on our end too.", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 50).toISOString() },
     ],

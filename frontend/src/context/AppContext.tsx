@@ -1,100 +1,179 @@
-import { createContext, useContext, useState, useMemo, type ReactNode } from "react";
-import type { CartItem, AppNotification } from "../types";
-import { notifications as initialNotifications, listings } from "../data/mockData";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import type { Listing, AppNotification } from "../types";
+import { apiFetch } from "../lib/api";
 
-interface AppContextValue {
-  cart: CartItem[];
-  addToCart: (listingId: string, quantityMt?: number, packWeight?: string) => void;
-  updateCartQuantity: (listingId: string, quantityMt: number) => void;
-  removeFromCart: (listingId: string) => void;
-  cartCount: number;
+export interface CartLine {
+  listingId: string;
+  quantityMt: number;
+  packWeight: string;
+  listing: Listing;
+  pricePerMt: number;
+  lineTotal: number;
+}
+
+interface CartResponse {
+  items: CartLine[];
   cartTotal: number;
+  cartCount: number;
+}
 
-  watchlist: string[];
-  toggleWatchlist: (listingId: string) => void;
-
+interface NotificationsResponse {
   notifications: AppNotification[];
   unreadCount: number;
-  markAllNotificationsRead: () => void;
-  markNotificationRead: (id: string) => void;
+}
+
+interface AppContextValue {
+  // Listings (fetched once, used for client-side filtering across pages)
+  listings: Listing[];
+  listingsLoading: boolean;
+  refreshListings: () => Promise<void>;
+
+  // Cart
+  cartItems: CartLine[];
+  cartCount: number;
+  cartTotal: number;
+  addToCart: (listingId: string, quantityMt?: number, packWeight?: string) => Promise<void>;
+  updateCartQuantity: (listingId: string, quantityMt: number) => Promise<void>;
+  removeFromCart: (listingId: string) => Promise<void>;
+  refreshCart: () => Promise<void>;
+
+  // Watchlist
+  watchlist: string[];
+  watchlistListings: Listing[];
+  toggleWatchlist: (listingId: string) => Promise<void>;
+  refreshWatchlist: () => Promise<void>;
+
+  // Notifications
+  notifications: AppNotification[];
+  unreadCount: number;
+  markAllNotificationsRead: () => Promise<void>;
+  markNotificationRead: (id: string) => Promise<void>;
+  refreshNotifications: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [cart, setCart] = useState<CartItem[]>([
-    { listingId: "L-1001", quantityMt: 1, packWeight: "1MT" },
-    { listingId: "L-1004", quantityMt: 2, packWeight: "1MT" },
-  ]);
-  const [watchlist, setWatchlist] = useState<string[]>(["L-1002", "L-1003"]);
-  const [notificationsState, setNotificationsState] = useState<AppNotification[]>(initialNotifications);
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [listingsLoading, setListingsLoading] = useState(true);
 
-  function addToCart(listingId: string, quantityMt = 1, packWeight = "1MT") {
-    setCart((prev) => {
-      const existing = prev.find((item) => item.listingId === listingId);
-      if (existing) {
-        return prev.map((item) =>
-          item.listingId === listingId ? { ...item, quantityMt: item.quantityMt + quantityMt } : item
-        );
-      }
-      return [...prev, { listingId, quantityMt, packWeight }];
+  const [cartItems, setCartItems] = useState<CartLine[]>([]);
+  const [cartTotal, setCartTotal] = useState(0);
+  const [cartCount, setCartCount] = useState(0);
+
+  const [watchlistListings, setWatchlistListings] = useState<Listing[]>([]);
+
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  async function refreshListings() {
+    setListingsLoading(true);
+    try {
+      const data = await apiFetch<Listing[]>("/listings");
+      setListings(data);
+    } finally {
+      setListingsLoading(false);
+    }
+  }
+
+  async function refreshCart() {
+    const data = await apiFetch<CartResponse>("/cart");
+    setCartItems(data.items);
+    setCartTotal(data.cartTotal);
+    setCartCount(data.cartCount);
+  }
+
+  async function refreshWatchlist() {
+    const data = await apiFetch<Listing[]>("/watchlist");
+    setWatchlistListings(data);
+  }
+
+  async function refreshNotifications() {
+    const data = await apiFetch<NotificationsResponse>("/notifications");
+    setNotifications(data.notifications);
+    setUnreadCount(data.unreadCount);
+  }
+
+  useEffect(() => {
+    refreshListings();
+    refreshCart();
+    refreshWatchlist();
+    refreshNotifications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function addToCart(listingId: string, quantityMt = 1, packWeight = "1MT") {
+    await apiFetch("/cart", {
+      method: "POST",
+      body: JSON.stringify({ listingId, quantityMt, packWeight }),
     });
+    await refreshCart();
   }
 
-  function updateCartQuantity(listingId: string, quantityMt: number) {
-    setCart((prev) =>
-      prev
-        .map((item) => (item.listingId === listingId ? { ...item, quantityMt } : item))
-        .filter((item) => item.quantityMt > 0)
-    );
+  async function updateCartQuantity(listingId: string, quantityMt: number) {
+    if (quantityMt <= 0) {
+      await removeFromCart(listingId);
+      return;
+    }
+    await apiFetch(`/cart/${listingId}`, {
+      method: "PUT",
+      body: JSON.stringify({ quantityMt }),
+    });
+    await refreshCart();
   }
 
-  function removeFromCart(listingId: string) {
-    setCart((prev) => prev.filter((item) => item.listingId !== listingId));
+  async function removeFromCart(listingId: string) {
+    await apiFetch(`/cart/${listingId}`, { method: "DELETE" });
+    await refreshCart();
   }
 
-  function toggleWatchlist(listingId: string) {
-    setWatchlist((prev) =>
-      prev.includes(listingId) ? prev.filter((id) => id !== listingId) : [...prev, listingId]
-    );
+  async function toggleWatchlist(listingId: string) {
+    const isWatched = watchlistListings.some((l) => l.id === listingId);
+    if (isWatched) {
+      await apiFetch(`/watchlist/${listingId}`, { method: "DELETE" });
+    } else {
+      await apiFetch(`/watchlist/${listingId}`, { method: "POST" });
+    }
+    await refreshWatchlist();
   }
 
-  function markAllNotificationsRead() {
-    setNotificationsState((prev) => prev.map((n) => ({ ...n, read: true })));
+  async function markAllNotificationsRead() {
+    await apiFetch("/notifications/read-all", { method: "PATCH" });
+    await refreshNotifications();
   }
 
-  function markNotificationRead(id: string) {
-    setNotificationsState((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+  async function markNotificationRead(id: string) {
+    await apiFetch(`/notifications/${id}/read`, { method: "PATCH" });
+    await refreshNotifications();
   }
 
-  const cartCount = cart.reduce((sum, item) => sum + item.quantityMt, 0);
-
-  const cartTotal = useMemo(() => {
-    return cart.reduce((sum, item) => {
-      const listing = listings.find((l) => l.id === item.listingId);
-      if (!listing) return sum;
-      const price = listing.listingType === "auction" ? listing.currentHighBidPerMt ?? listing.pricePerMt : listing.pricePerMt;
-      return sum + price * item.quantityMt;
-    }, 0);
-  }, [cart]);
-
-  const unreadCount = notificationsState.filter((n) => !n.read).length;
+  const watchlist = watchlistListings.map((l) => l.id);
 
   return (
     <AppContext.Provider
       value={{
-        cart,
+        listings,
+        listingsLoading,
+        refreshListings,
+
+        cartItems,
+        cartCount,
+        cartTotal,
         addToCart,
         updateCartQuantity,
         removeFromCart,
-        cartCount,
-        cartTotal,
+        refreshCart,
+
         watchlist,
+        watchlistListings,
         toggleWatchlist,
-        notifications: notificationsState,
+        refreshWatchlist,
+
+        notifications,
         unreadCount,
         markAllNotificationsRead,
         markNotificationRead,
+        refreshNotifications,
       }}
     >
       {children}

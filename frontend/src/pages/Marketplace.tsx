@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Nut, Flame, Cookie, Sparkles, ArrowRight, Gavel } from "lucide-react";
-import { listings } from "../data/mockData";
 import ListingCard from "../components/ui/ListingCard";
 import FilterSidebar, { defaultFilters } from "../components/ui/FilterSidebar";
 import { useFilteredListings } from "../lib/useFilteredListings";
@@ -17,7 +16,7 @@ const categories: { type: ProcessingType; icon: typeof Nut; description: string 
 
 export default function Marketplace() {
   const [filters, setFilters] = useState(defaultFilters);
-  const { watchlist, toggleWatchlist, addToCart } = useApp();
+  const { listings, listingsLoading, watchlist, toggleWatchlist, addToCart } = useApp();
   const filtered = useFilteredListings(listings, filters);
 
   const liveAuctions = listings.filter((l) => l.listingType === "auction");
@@ -52,14 +51,8 @@ export default function Marketplace() {
             </Link>
           </div>
         </div>
-        <div
-          className="absolute -right-10 -top-10 h-56 w-56 rounded-full bg-brand-500/40"
-          aria-hidden
-        />
-        <div
-          className="absolute bottom-0 right-20 h-32 w-32 rounded-full bg-brand-400/30"
-          aria-hidden
-        />
+        <div className="absolute -right-10 -top-10 h-56 w-56 rounded-full bg-brand-500/40" aria-hidden />
+        <div className="absolute bottom-0 right-20 h-32 w-32 rounded-full bg-brand-400/30" aria-hidden />
       </div>
 
       {/* Category tiles */}
@@ -85,55 +78,58 @@ export default function Marketplace() {
         </div>
       </div>
 
-      {/* Main content: filters + listings */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[260px_1fr]">
-        <div>
-          <FilterSidebar filters={filters} onChange={setFilters} />
-        </div>
-
-        <div className="flex flex-col gap-6">
-          {/* Live auctions strip */}
+      {listingsLoading ? (
+        <p className="py-12 text-center text-sm text-text">Loading marketplace listings…</p>
+      ) : (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[260px_1fr]">
           <div>
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-text-h">Live auctions ending soon</h2>
-              <Link to="/auctions" className="text-xs font-medium text-brand-600 hover:underline">
-                View all
-              </Link>
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {liveAuctions.slice(0, 3).map((listing) => (
-                <ListingCard
-                  key={listing.id}
-                  listing={listing}
-                  watchlisted={watchlist.includes(listing.id)}
-                  onToggleWatchlist={toggleWatchlist}
-                  onAddToCart={addToCart}
-                />
-              ))}
-            </div>
+            <FilterSidebar filters={filters} onChange={setFilters} />
           </div>
 
-          {/* All listings */}
-          <div>
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-text-h">
-                All lots <span className="text-sm font-normal text-text">({filtered.length})</span>
-              </h2>
+          <div className="flex flex-col gap-6">
+            {/* Live auctions strip */}
+            <div>
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-base font-semibold text-text-h">Live auctions ending soon</h2>
+                <Link to="/auctions" className="text-xs font-medium text-brand-600 hover:underline">
+                  View all
+                </Link>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {liveAuctions.slice(0, 3).map((listing) => (
+                  <ListingCard
+                    key={listing.id}
+                    listing={listing}
+                    watchlisted={watchlist.includes(listing.id)}
+                    onToggleWatchlist={toggleWatchlist}
+                    onAddToCart={addToCart}
+                  />
+                ))}
+              </div>
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((listing) => (
-                <ListingCard
-                  key={listing.id}
-                  listing={listing}
-                  watchlisted={watchlist.includes(listing.id)}
-                  onToggleWatchlist={toggleWatchlist}
-                  onAddToCart={addToCart}
-                />
-              ))}
+
+            {/* All listings */}
+            <div>
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-base font-semibold text-text-h">
+                  All lots <span className="text-sm font-normal text-text">({filtered.length})</span>
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {filtered.map((listing) => (
+                  <ListingCard
+                    key={listing.id}
+                    listing={listing}
+                    watchlisted={watchlist.includes(listing.id)}
+                    onToggleWatchlist={toggleWatchlist}
+                    onAddToCart={addToCart}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

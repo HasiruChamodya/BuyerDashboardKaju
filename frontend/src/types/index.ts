@@ -120,6 +120,26 @@ export interface AppNotification {
   read: boolean;
 }
 
+export type BidStatus = "winning" | "outbid" | "won" | "lost";
+
+export interface UserBid {
+  id: string;
+  listingId: string;
+  listingTitle: string;
+  grade: CashewGrade;
+  processingType: ProcessingType;
+  vendorName: string;
+  vendorLocation: SriLankanDistrict;
+  myBidPerMt: number;
+  currentHighBidPerMt: number;
+  minIncrementPerMt: number;
+  stockAvailableMt: number;
+  auctionEndsAt: string;
+  bidCount: number;
+  status: BidStatus;
+  placedAt: string;
+}
+
 export interface ConversationMessage {
   id: string;
   from: "buyer" | "vendor";

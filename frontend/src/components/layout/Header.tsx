@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Search, Bell, HelpCircle, ArrowLeftRight, Menu, Sprout } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Bell, HelpCircle, ArrowLeftRight, Menu, Sprout } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { timeAgo } from "../../lib/format";
 
@@ -10,12 +10,10 @@ interface HeaderProps {
 
 export default function Header({ onMenuClick }: HeaderProps) {
   const { notifications, unreadCount, markAllNotificationsRead } = useApp();
-  const [query, setQuery] = useState("");
   const [notifOpen, setNotifOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const helpRef = useRef<HTMLDivElement>(null);
-  const navigate = useNavigate();
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -25,11 +23,6 @@ export default function Header({ onMenuClick }: HeaderProps) {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
-
-  function handleSearchSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    navigate(`/search${query ? `?q=${encodeURIComponent(query)}` : ""}`);
-  }
 
   return (
     <header className="flex h-16 shrink-0 items-center gap-3 border-b border-border bg-white px-4 sm:px-6">
@@ -41,22 +34,13 @@ export default function Header({ onMenuClick }: HeaderProps) {
         <Menu className="h-5 w-5" />
       </button>
 
-      <Link to="/marketplace" className="flex items-center gap-2 lg:hidden">
+      <Link to="/auctions" className="flex items-center gap-2 lg:hidden">
         <div className="flex h-8 w-8 items-center justify-center rounded-md bg-brand-600 text-white">
           <Sprout className="h-4.5 w-4.5" />
         </div>
       </Link>
 
-      <form onSubmit={handleSearchSubmit} className="relative flex-1 max-w-xl">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text" />
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search lots, grades, vendors (e.g. W240, Anuradhapura)…"
-          className="w-full rounded-md border border-border bg-bg-soft py-2 pl-9 pr-3 text-sm text-text-h placeholder:text-text focus:border-brand-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-100"
-        />
-      </form>
+      <div className="flex-1" />
 
       <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
         {/* Help menu */}

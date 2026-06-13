@@ -11,44 +11,73 @@ import {
   Zap,
   MessageSquare,
 } from "lucide-react";
-import { listings } from "../data/mockData";
 import { GradeStamp, ProcessingPill, ListingTypeTag, VerifiedBadge } from "../components/ui/Badge";
 import { ImagePlaceholder, RatingStars } from "../components/ui/Misc";
 import CountdownTimer from "../components/ui/CountdownTimer";
 import Button from "../components/ui/Button";
 import { formatDate, formatLkr, formatLkrPerMt } from "../lib/format";
 import { useApp } from "../context/AppContext";
+import { apiFetch } from "../lib/api";
 
 export default function ProductProfile() {
   const { id } = useParams<{ id: string }>();
+  const {
+    listings,
+    listingsLoading,
+    watchlist,
+    toggleWatchlist,
+    addToCart,
+    cartItems,
+    refreshListings,
+  } = useApp();
+
   const listing = listings.find((l) => l.id === id);
-  const { watchlist, toggleWatchlist, addToCart, cart } = useApp();
 
   const [activeImage, setActiveImage] = useState(0);
   const [packWeight, setPackWeight] = useState(listing?.availablePackWeights[0] ?? "");
   const [quantityMt, setQuantityMt] = useState(1);
-  const [bidAmount, setBidAmount] = useState(0);
+  const [bidAmount, setBidAmount] = useState<number | null>(null);
   const [bidPlaced, setBidPlaced] = useState(false);
+  const [bidError, setBidError] = useState<string | null>(null);
+  const [submittingBid, setSubmittingBid] = useState(false);
   const [added, setAdded] = useState(false);
+
+  if (listingsLoading) {
+    return <p className="py-12 text-center text-sm text-text">Loading lot details…</p>;
+  }
 
   if (!listing) return <Navigate to="/marketplace" replace />;
 
   const isAuction = listing.listingType === "auction";
   const minNextBid = (listing.currentHighBidPerMt ?? listing.pricePerMt) + (listing.minIncrementPerMt ?? 1000);
-  const effectiveBid = bidAmount || minNextBid;
+  const effectiveBid = bidAmount ?? minNextBid;
   const isValidBid = effectiveBid >= minNextBid;
-  const inCart = cart.some((c) => c.listingId === listing.id);
+  const inCart = cartItems.some((c) => c.listingId === listing.id);
 
-  function handleAddToCart() {
-    addToCart(listing!.id, quantityMt, packWeight);
+  async function handleAddToCart() {
+    await addToCart(listing!.id, quantityMt, packWeight);
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   }
 
-  function handlePlaceBid() {
+  async function handlePlaceBid() {
     if (!isValidBid) return;
-    setBidPlaced(true);
-    setTimeout(() => setBidPlaced(false), 2500);
+    setBidError(null);
+    setSubmittingBid(true);
+    try {
+      await apiFetch(`/listings/${listing!.id}/bid`, {
+        method: "POST",
+        body: JSON.stringify({ amountPerMt: effectiveBid }),
+      });
+      await refreshListings();
+      setBidAmount(null);
+      setBidPlaced(true);
+      setTimeout(() => setBidPlaced(false), 2500);
+    } catch (err) {
+      setBidError(err instanceof Error ? err.message : "Could not place bid");
+    } finally {
+      setSubmittingBid(false);
+    }
   }
 
   return (
@@ -173,7 +202,7 @@ export default function ProductProfile() {
                   <input
                     type="number"
                     placeholder={String(minNextBid)}
-                    value={bidAmount || ""}
+                    value={bidAmount ?? ""}
                     step={listing.minIncrementPerMt}
                     onChange={(e) => setBidAmount(Number(e.target.value))}
                     className="mono-num w-full rounded-md border border-border bg-white px-3 py-2 text-sm font-semibold text-text-h focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-100"
@@ -182,13 +211,16 @@ export default function ProductProfile() {
                     Minimum next bid: <span className="mono-num font-medium text-text-h">{formatLkrPerMt(minNextBid)}</span>
                     {" · "}Increment: <span className="mono-num font-medium text-text-h">{formatLkr(listing.minIncrementPerMt!)}</span>
                   </p>
-                  {bidAmount > 0 && !isValidBid && (
+                  {bidAmount !== null && bidAmount > 0 && !isValidBid && (
                     <p className="mt-1 text-[11px] text-danger-500">Bid does not meet the minimum increment threshold.</p>
+                  )}
+                  {bidError && (
+                    <p className="mt-1 text-[11px] text-danger-500">{bidError}</p>
                   )}
                 </div>
 
-                <Button onClick={handlePlaceBid} icon={<TrendingUp className="h-4 w-4" />}>
-                  {bidPlaced ? "Bid placed!" : "Place Bid"}
+                <Button onClick={handlePlaceBid} disabled={!isValidBid || submittingBid} icon={<TrendingUp className="h-4 w-4" />}>
+                  {submittingBid ? "Placing bid…" : bidPlaced ? "Bid placed!" : "Place Bid"}
                 </Button>
                 {bidPlaced && (
                   <p className="rounded-md bg-brand-50 px-3 py-2 text-xs font-medium text-brand-600">

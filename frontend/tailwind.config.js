@@ -39,6 +39,7 @@ export default {
         // Status
         danger: {
           50: "#fdecec",
+          200: "#f6c6bd",
           500: "#c2410c",
           600: "#a93709",
         },
@@ -66,4 +67,5 @@ export default {
     },
   },
   plugins: [],
+
 };

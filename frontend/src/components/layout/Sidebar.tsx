@@ -1,9 +1,6 @@
 import { NavLink } from "react-router-dom";
 import {
-  LayoutGrid,
-  Search,
   Gavel,
-  ShoppingCart,
   Truck,
   Heart,
   MessageSquare,
@@ -18,15 +15,12 @@ import { useApp } from "../../context/AppContext";
 interface NavItem {
   to: string;
   label: string;
-  icon: typeof LayoutGrid;
-  badgeKey?: "cart" | "watchlist" | "notifications" | "messages";
+  icon: typeof Gavel;
+  badgeKey?: "watchlist" | "notifications" | "messages";
 }
 
 const primaryNav: NavItem[] = [
-  { to: "/marketplace", label: "Home / Marketplace", icon: LayoutGrid },
-  { to: "/search", label: "Search & Browse", icon: Search },
-  { to: "/auctions", label: "Active Auctions", icon: Gavel },
-  { to: "/cart", label: "Cart", icon: ShoppingCart, badgeKey: "cart" },
+  { to: "/auctions", label: "My Auctions", icon: Gavel },
 ];
 
 const activityNav: NavItem[] = [
@@ -47,13 +41,11 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ collapsed, onToggle, onNavigate }: SidebarProps) {
-  const { cartCount, watchlist, unreadCount, notifications } = useApp();
+  const { watchlist, unreadCount, notifications } = useApp();
   const unreadMessages = notifications.filter((n) => n.type === "message" && !n.read).length;
 
   function badgeFor(key?: NavItem["badgeKey"]): number | null {
     switch (key) {
-      case "cart":
-        return cartCount > 0 ? cartCount : null;
       case "watchlist":
         return watchlist.length > 0 ? watchlist.length : null;
       case "notifications":
